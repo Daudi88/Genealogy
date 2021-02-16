@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="Genealogy.CRUD">
+    <Position X="6" Y="1.5" Width="3.25" />
+    <TypeIdentifier>
+      <HashCode>AIQGBEAAAAIBAIAARAAAAgEEAAEAYAAkAGAAgAABAII=</HashCode>
+      <FileName>CRUD.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="Person" />
+    </ShowAsAssociation>
+  </Class>
+  <Class Name="Genealogy.Member">
+    <Position X="2.75" Y="1.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAACAEAAAAABAAAAAAAAAAAAAAAwQACAAAABAAAAAAg=</HashCode>
+      <FileName>Member.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Genealogy.FamilyTree">
+    <Position X="10.75" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAACCAAAAAAAAAAAAAQAQAACAAAAAAAAAAAAAA=</HashCode>
+      <FileName>FamilyTree.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="CRUD" />
+    </ShowAsAssociation>
+  </Class>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>
