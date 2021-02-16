@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -9,43 +10,6 @@ namespace Genealogy
     internal class FamilyTree
     {
         public static SqlDatabase Database { get; set; } = new SqlDatabase();
-
-        /// <summary>
-        /// Tries to create the database. If it works then the tables are
-        /// created and filled with starting data. If the database is not
-        /// created, then none of the tables are created and no starting
-        /// data is inserted.
-        /// </summary>
-        public void SetUp()
-        {
-            Console.Title = "Family Tree";
-            Console.OutputEncoding = Encoding.UTF8;
-            if (Database.CreateDatabase("FamilyTree"))
-            {
-                Database.CreateTable("Family",
-                "id int PRIMARY KEY IDENTITY (1,1) NOT NULL, " +
-                "first_name nvarchar(50) NOT NULL, " +
-                "last_name nvarchar(50) NOT NULL, " +
-                "date_of_birth nvarchar(10) NULL, " +
-                "place_of_birth_id int NULL, " +
-                "date_of_death nvarchar(10) NULL, " +
-                "place_of_death_id int NULL, " +
-                "partner_id int NULL, " +
-                "father_id int NULL, " +
-                "mother_id int NULL");
-
-                Database.CreateTable("Places",
-                    "id int PRIMARY KEY IDENTITY (1,1) NOT NULL, " +
-                    "name nvarchar(50) NOT NULL, country_id int NOT NULL");
-
-                Database.CreateTable("Countries",
-                    "id int PRIMARY KEY IDENTITY (1,1) NOT NULL, " +
-                    "name nvarchar(50) NOT NULL");
-
-                Database.InsertFamily();
-                Database.InsertPlaces();
-            }
-        }
 
         /// <summary>
         /// Sets the program up with "mock data" and runs the main menu.
@@ -76,22 +40,107 @@ namespace Genealogy
                     innerExit = true;
                     Console.Write("\t> ");
                     var choice = Utility.ReadLine();
-                    if (choice == "1") AddMember();
-                    else if (choice == "2") SearchMembers();
-                    else if (choice.ToUpper() == "E")
+                    switch (choice)
                     {
-                        Utility.WriteDelayed("\n\tExiting the program");
-                        Utility.WriteDelayed("...", delay: 600);
-                        Thread.Sleep(800);
-                        Environment.Exit(0);
-                    }
-                    else
-                    {
-                        Utility.ErrorMessage("\tInvalid choice. try again!");
-                        innerExit = false;
-                    }
+                        case "1":
+                            Utility.PrintTitle("Add Member");
+                            Utility.WriteInColor("\tEnter 0 to go back to the main menu\n\n");
+                            AddMember();
+                            break;
+                        case "2":
+                            SearchMembers();
+                            break;
+                        case "E":
+                            Utility.WriteDelayed("\n\tExiting the program");
+                            Utility.WriteDelayed("...", delay: 600);
+                            Thread.Sleep(800);
+                            Environment.Exit(0);
+                            break;
+                        default:
+                            Utility.ErrorMessage("\tInvalid choice. try again!");
+                            innerExit = false;
+                            break;
+                    }                    
                 } while (!innerExit);
             }
+        }
+
+        /// <summary>
+        /// Adds a member to the Family Tree.
+        /// </summary>
+        /// <returns>The member id.</returns>
+        public static int AddMember(bool standard = true)
+        {            
+            var firstName = Utility.GetName("first");
+            if (firstName == "0") return 0;
+
+            var lastName = Utility.GetName("last");
+            if (lastName == "0") return 0;
+
+            var member = new Member
+            {
+                FirstName = char.ToUpper(firstName[0]) + firstName[1..],
+                LastName = char.ToUpper(lastName[0]) + lastName[1..]
+            };
+
+            if (Database.DoesMemberExist(member.ToString()))
+            {
+                var choice = Utility.DoesAlreadyExist(member.ToString());
+                if (choice.ToLower() != "y") return 0;
+                Console.WriteLine();
+            }
+
+            member.DateOfBirth = Utility.GetDateTime("birth");
+
+            var placeOfBirthId = Database.GetPlaceId("birth");
+            if (placeOfBirthId != 0) member.PlaceOfBirthId = placeOfBirthId;
+
+            Database.CreateBasicMember(member);
+            member.Id = Database.GetLastAddedId("Family");
+
+            if (standard)
+            {
+                if (Utility.MakeAChoice("\n\tDo you want to add more details(y/n)?", ConsoleColor.Yellow))
+                    AddDetails(member);
+            }
+            Utility.Success($"{member.FirstName} {member.LastName}");
+            return member.Id;
+        }
+
+        private static void AddDetails(Member member)
+        {
+            if (Utility.MakeAChoice("\tIs the member deseased(y/n)?"))
+            {
+                member.DateOfDeath = Utility.GetDateTime("death");
+
+                var placeOfDeathId = Database.GetPlaceId("death");
+                if (placeOfDeathId != 0) member.PlaceOfDeathId = placeOfDeathId;
+                Console.WriteLine();
+            }
+
+            if (Utility.MakeAChoice("\tDo you want to set partner(y/n)? "))
+            {
+                member.PartnerId = Database.SetMember("partner");
+            }
+
+            if (Utility.MakeAChoice("\tDo you want to set parents(y/n)?"))
+            {
+                SetParents(member);
+            }
+            Console.WriteLine();
+            Database.UpdateMember(member);
+        }
+
+        private static void SetParents(Member member)
+        {
+            var fatherId = Database.SetMember("father");
+            if (fatherId != 0)
+            {
+                member.FatherId = fatherId;
+                Console.WriteLine();
+            }
+            var motherId = Database.SetMember("mother");
+            if (motherId != 0) member.MotherId = motherId;
         }
 
         /// <summary>
@@ -505,81 +554,40 @@ namespace Genealogy
         }
 
         /// <summary>
-        /// Adds a member to the Family Tree.
+        /// Tries to create the database. If it works then the tables are
+        /// created and filled with starting data. If the database is not
+        /// created, then none of the tables are created and no starting
+        /// data is inserted.
         /// </summary>
-        /// <returns>The member id.</returns>
-        public static int AddMember(bool standard = true)
+        private void SetUp()
         {
-            Utility.PrintTitle("Add Member");
-            Utility.WriteInColor("\tEnter 0 to go back to the main menu\n\n");
-            var firstName = Utility.GetName("first");
-            if (firstName == "0") return 0;
-
-            var lastName = Utility.GetName("last");
-            if (lastName == "0") return 0;
-
-            var member = new Member
+            Console.Title = "Family Tree";
+            Console.OutputEncoding = Encoding.UTF8;
+            if (Database.CreateDatabase("FamilyTree"))
             {
-                FirstName = char.ToUpper(firstName[0]) + firstName[1..],
-                LastName = char.ToUpper(lastName[0]) + lastName[1..]
-            };
+                Database.CreateTable("Family",
+                "id int PRIMARY KEY IDENTITY (1,1) NOT NULL, " +
+                "first_name nvarchar(50) NOT NULL, " +
+                "last_name nvarchar(50) NOT NULL, " +
+                "date_of_birth nvarchar(10) NULL, " +
+                "place_of_birth_id int NULL, " +
+                "date_of_death nvarchar(10) NULL, " +
+                "place_of_death_id int NULL, " +
+                "partner_id int NULL, " +
+                "father_id int NULL, " +
+                "mother_id int NULL");
 
-            if (Database.DoesMemberExist(member.ToString()))
-            {
-                var choice = Utility.DoesAlreadyExist(member.ToString());
-                if (choice.ToLower() != "y") return 0;
-                Console.WriteLine();
+                Database.CreateTable("Places",
+                    "id int PRIMARY KEY IDENTITY (1,1) NOT NULL, " +
+                    "name nvarchar(50) NOT NULL, country_id int NOT NULL");
+
+                Database.CreateTable("Countries",
+                    "id int PRIMARY KEY IDENTITY (1,1) NOT NULL, " +
+                    "name nvarchar(50) NOT NULL");
+
+                Database.InsertFamily();
+                Database.InsertPlaces();
             }
-
-            member.DateOfBirth = Utility.GetDateTime("birth");
-
-            var placeOfBirthId = Database.GetPlaceId("birth");
-            if (placeOfBirthId != 0) member.PlaceOfBirthId = placeOfBirthId;
-
-            Database.CreateBasicMember(member);
-            member.Id = Database.GetLastAddedId("Family");
-
-            if (standard)
-            {
-                var choice = Utility.GetInput("\n\tDo you want to add more details(y/n)?");
-                if (choice.ToLower() == "y")
-                    AddDetails(member);
-            }
-            Utility.Success($"{member.FirstName} {member.LastName}");
-            return member.Id;
-        }
-
-        private static void AddDetails(Member member)
-        {
-            var choice = Utility.GetInput("\tIs the member dead(y/n)?");
-            if (choice.ToLower() == "y")
-            {
-                member.DateOfDeath = Utility.GetDateTime("death");
-
-                var placeOfDeathId = Database.GetPlaceId("death");
-                if (placeOfDeathId != 0) member.PlaceOfDeathId = placeOfDeathId;
-                Console.WriteLine();
-            }
-
-            choice = Utility.GetInput("\tDo you want to set parents(y/n)?");
-            if (choice.ToLower() == "y")
-            {
-                SetParents(member);
-            }
-            Console.WriteLine();
-            Database.UpdateMember(member);
-        }
-
-        private static void SetParents(Member member)
-        {
-            var fatherId = Database.SetMember("father");
-            if (fatherId != 0)
-            {
-                member.FatherId = fatherId;
-                Console.WriteLine();
-            }
-            var motherId = Database.SetMember("mother");
-            if (motherId != 0) member.MotherId = motherId;
         }
     }
 }

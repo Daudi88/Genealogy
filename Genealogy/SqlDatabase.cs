@@ -12,69 +12,7 @@ namespace Genealogy
         public string Connection { get; set; } = @"Data Source = .\SQLExpress; Integrated Security = true; database = {0}";
         public string DatabaseName { get; set; } = "FamilyTree";
         public DataTable DataTable { get; set; } = new DataTable();
-        public string Query { get; set; }
-
-        /// <summary>
-        /// Executes an SQL command based on the <paramref name="query"/> query
-        /// and the <paramref name="parameters"/> provided.
-        /// </summary>
-        /// <param name="query"></param>
-        /// <param name="parameters"></param>
-        /// <returns></returns>
-        private int ExecuteSql(string query, params (string, string)[] parameters)
-        {
-            var connectionString = string.Format(Connection, DatabaseName);
-            using (var connection = new SqlConnection(connectionString))
-            {
-                connection.Open();
-                using (var command = new SqlCommand(query, connection))
-                {
-                    foreach (var parameter in parameters)
-                    {
-                        command.Parameters.AddWithValue(parameter.Item1, parameter.Item2);
-                    }
-
-                    foreach (SqlParameter parameter in command.Parameters)
-                    {
-                        if (parameter.Value == null)
-                        {
-                            parameter.Value = DBNull.Value;
-                        }
-                    }
-                    return command.ExecuteNonQuery();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Retrieves data from the database based on the <paramref name="query"/>
-        /// and <paramref name="parameters"/> provided.
-        /// </summary>
-        /// <param name="query"></param>
-        /// <param name="parameters"></param>
-        /// <returns>DataTable with all the data or empty if no data was found.</returns>
-        private DataTable GetDataTable(string query, params (string, string)[] parameters)
-        {
-            var dataTable = new DataTable();
-            var connectionString = string.Format(Connection, DatabaseName);
-            using (var connection = new SqlConnection(connectionString))
-            {
-                connection.Open();
-                using (var command = new SqlCommand(query, connection))
-                {
-                    foreach (var parameter in parameters)
-                    {
-                        command.Parameters.AddWithValue(parameter.Item1, parameter.Item2);
-                    }
-
-                    using (var adapter = new SqlDataAdapter(command))
-                    {
-                        adapter.Fill(dataTable);
-                    }
-                }
-            }
-            return dataTable;
-        }
+        public string Query { get; set; }       
 
         /// <summary>
         /// Tries to create a database with the provided <paramref name="name"/>.
@@ -109,6 +47,7 @@ namespace Genealogy
         public void CreateTable(string name, string columns)
         {
             ExecuteSql($"CREATE TABLE {name} ({columns})");
+            //ExecuteSql($"");
         }
 
         /// <summary>
@@ -136,7 +75,7 @@ namespace Genealogy
             foreach (var line in lines)
             {
                 var place = line.Split(", ");
-                CreatePlace(place[0], place[1]);
+                CreatePlace(place);
             }
         }
 
@@ -147,9 +86,11 @@ namespace Genealogy
         /// <param name="member"></param>
         public void CreateFullMember(Member member)
         {
-            Query = "INSERT Family (first_name, last_name, date_of_birth, place_of_birth_id, " +
+            Query = "SET IDENTITY_INSERT Family ON; INSERT Family " +
+                "(id, first_name, last_name, date_of_birth, place_of_birth_id, " +
                 "date_of_death, place_of_death_id, partner_id, father_id, mother_id) " +
-                "VALUES (@fName, @lName, @dBirth, @pBirth, @dDeath, @pDeath, @pId, @fId, @mId)";
+                "VALUES (@id, @fName, @lName, @dBirth, @pBirth, " +
+                "@dDeath, @pDeath, @pId, @fId, @mId)";
             var parameters = GetParameters(member);
             ExecuteSql(Query, parameters);
         }
@@ -283,7 +224,7 @@ namespace Genealogy
         /// <param name="member"></param>
         /// <returns><see cref="List{T}"/> of parents or an empty
         /// <see cref="List{T}"/> if no parents are found.</returns>
-        internal List<Member> GetParents(Member member)
+        public List<Member> GetParents(Member member)
         {
             var parents = new List<Member>();
             var father = SearchById(member.FatherId);
@@ -372,7 +313,7 @@ namespace Genealogy
         /// <param name="member"></param>
         /// <returns><see cref="List{T}"/> of aunts and uncles or an empty
         /// <see cref="List{T}"/> if no aunts or uncles are found.</returns>
-        internal List<Member> GetAuntsAndUncles(Member member)
+        public List<Member> GetAuntsAndUncles(Member member)
         {
             var auntsAndUncles = new List<Member>();
             var parents = GetParents(member);
@@ -390,7 +331,7 @@ namespace Genealogy
         /// <param name="member"></param>
         /// <returns><see cref="List{T}"/> of grandparents or an empty
         /// list if no grandparents are found.</returns>
-        private List<Member> GetGrandparents(Member member)
+        public List<Member> GetGrandparents(Member member)
         {
             var grandparents = new List<Member>();
             var parents = GetParents(member);
@@ -402,12 +343,67 @@ namespace Genealogy
         }
 
         /// <summary>
+        /// Retrieves relatives based on the
+        /// <paramref name="choice"/> made by the user.
+        /// </summary>
+        /// <param name="member"></param>
+        /// <param name="choice"></param>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public List<Member> GetRelatives(Member member, int choice, out string type)
+        {
+            var relatives = new List<Member>();
+            switch (choice)
+            {
+                case 1:
+                    relatives = GetParents(member);
+                    type = "parents";
+                    break;
+
+                case 2:
+                    relatives = GetChildren(member);
+                    type = "children";
+                    break;
+
+                case 3:
+                    relatives.Add(SearchById(member.PartnerId));
+                    type = "partner";
+                    break;
+
+                case 4:
+                    relatives = GetSiblings(member);
+                    type = "siblings";
+                    break;
+
+                case 5:
+                    relatives = GetCousins(member);
+                    type = "cousins";
+                    break;
+
+                case 6:
+                    relatives = GetAuntsAndUncles(member);
+                    type = "aunts or uncles";
+                    break;
+
+                case 7:
+                    relatives = GetGrandparents(member);
+                    type = "grandparents";
+                    break;
+
+                default:
+                    type = "";
+                    break;
+            }
+            return relatives;
+        }
+
+        /// <summary>
         /// Checks if the member exists in the database
         /// otherwise lets user create member.
         /// </summary>
         /// <param name="title"></param>
         /// <returns>Id of parent or 0 if no parent is found or created.</returns>
-        internal int? SetMember(string title)
+        public int? SetMember(string title)
         {
             Console.Write($"\tEnter name of {title}: ");
             var name = Utility.ReadLine();
@@ -485,61 +481,6 @@ namespace Genealogy
         }
 
         /// <summary>
-        /// Retrieves relatives based on the
-        /// <paramref name="choice"/> made by the user.
-        /// </summary>
-        /// <param name="member"></param>
-        /// <param name="choice"></param>
-        /// <param name="type"></param>
-        /// <returns></returns>
-        public List<Member> GetRelatives(Member member, int choice, out string type)
-        {
-            var relatives = new List<Member>();
-            switch (choice)
-            {
-                case 1:
-                    relatives = GetParents(member);
-                    type = "parents";
-                    break;
-
-                case 2:
-                    relatives = GetChildren(member);
-                    type = "children";
-                    break;
-
-                case 3:
-                    relatives.Add(SearchById(member.PartnerId));
-                    type = "partner";
-                    break;
-
-                case 4:
-                    relatives = GetSiblings(member);
-                    type = "siblings";
-                    break;
-
-                case 5:
-                    relatives = GetCousins(member);
-                    type = "cousins";
-                    break;
-
-                case 6:
-                    relatives = GetAuntsAndUncles(member);
-                    type = "aunts or uncles";
-                    break;
-
-                case 7:
-                    relatives = GetGrandparents(member);
-                    type = "grandparents";
-                    break;
-
-                default:
-                    type = "";
-                    break;
-            }
-            return relatives;
-        }
-
-        /// <summary>
         /// Retrieves place and country based in <paramref name="placeId"/>.
         /// </summary>
         /// <param name="placeId"></param>
@@ -594,6 +535,134 @@ namespace Genealogy
                 }
             }
             return null;
+        }
+
+        /// <summary>
+        /// Gets the last added id from any specified <paramref name="table"/>.
+        /// </summary>
+        /// <param name="table"></param>
+        /// <returns></returns>
+        public int GetLastAddedId(string table)
+        {
+            string name;
+            if (table == "Family") name = "Family";
+            else if (table == "Places") name = "Places";
+            else name = "Countries";
+            DataTable = GetDataTable($"SELECT id FROM {name}");
+            var ids = new List<int>();
+            foreach (DataRow row in DataTable.Rows)
+            {
+                ids.Add(int.Parse(row["id"].ToString()));
+            }
+            return ids.Last();
+        }
+
+        /// <summary>
+        /// Selects all members from the Family table. Allows possible <paramref name="filter"/>.
+        /// </summary>
+        /// <param name="filter"></param>
+        /// <returns></returns>
+        public List<Member> Search(string filter = "")
+        {
+            DataTable = GetDataTable("SELECT * FROM Family " + filter);
+            List<Member> members = new List<Member>();
+            if (DataTable.Rows.Count > 0)
+            {
+                foreach (DataRow row in DataTable.Rows)
+                {
+                    members.Add(GetMember(row));
+                }
+                return members;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Takes a string representing a member. Separates the data into an array.
+        /// AAssigns every part to its member property. The perts that can be
+        /// <see langword="null"/> are checked before assignment.
+        /// </summary>
+        /// <param name="line"></param>
+        /// <returns>A <see cref="Member"/> with all its properties assigned.</returns>
+        public Member GetMember(string line)
+        {
+            var data = line.Split(", ");
+            var member = new Member
+            {
+                Id = int.Parse(data[0]),
+                FirstName = data[1],
+                LastName = data[2]
+            };
+            if (data[3] != "null") member.DateOfBirth = Convert.ToDateTime(data[3]);
+            if (data[4] != "null") member.PlaceOfBirthId = int.Parse(data[4]);
+            if (data[5] != "null") member.DateOfDeath = Convert.ToDateTime(data[5]);
+            if (data[6] != "null") member.PlaceOfDeathId = int.Parse(data[6]);
+            if (data[7] != "null") member.PartnerId = int.Parse(data[7]);
+            if (data[8] != "null") member.FatherId = int.Parse(data[8]);
+            if (data[9] != "null") member.MotherId = int.Parse(data[9]);
+            return member;
+        }
+
+        /// <summary>
+        /// Executes an SQL command based on the <paramref name="query"/> query
+        /// and the <paramref name="parameters"/> provided.
+        /// </summary>
+        /// <param name="query"></param>
+        /// <param name="parameters"></param>
+        /// <returns></returns>
+        private int ExecuteSql(string query, params (string, string)[] parameters)
+        {
+            var connectionString = string.Format(Connection, DatabaseName);
+            using (var connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                using (var command = new SqlCommand(query, connection))
+                {
+                    foreach (var parameter in parameters)
+                    {
+                        command.Parameters.AddWithValue(parameter.Item1, parameter.Item2);
+                    }
+
+                    foreach (SqlParameter parameter in command.Parameters)
+                    {
+                        if (parameter.Value == null)
+                        {
+                            parameter.Value = DBNull.Value;
+                        }
+                    }
+                    return command.ExecuteNonQuery();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Retrieves data from the database based on the <paramref name="query"/>
+        /// and <paramref name="parameters"/> provided.
+        /// </summary>
+        /// <param name="query"></param>
+        /// <param name="parameters"></param>
+        /// <returns>DataTable with all the data or empty if no data was found.</returns>
+        private DataTable GetDataTable(string query, params (string, string)[] parameters)
+        {
+            var dataTable = new DataTable();
+            var connectionString = string.Format(Connection, DatabaseName);
+            using (var connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                using (var command = new SqlCommand(query, connection))
+                {
+                    foreach (var parameter in parameters)
+                    {
+                        command.Parameters.AddWithValue(parameter.Item1, parameter.Item2);
+                    }
+
+                    using (var adapter = new SqlDataAdapter(command))
+                    {
+                        adapter.Fill(dataTable);
+                    }
+                }
+            }
+            return dataTable;
         }
 
         /// <summary>
@@ -667,6 +736,31 @@ namespace Genealogy
             return GetLastAddedId("Places");
         }
 
+        private void CreatePlace(string[] place)
+        {
+            var countryId = GetCountryId(place[2]);
+            if (countryId == 0)
+            {
+                Query = "INSERT Countries (name) VALUES (@name)";
+                ExecuteSql(Query, ("@name", place[2]));
+                countryId = GetLastAddedId("Countries");
+            }
+
+            Query = "SET IDENTITY_INSERT Places ON; " +
+                "INSERT Places (id, name, country_id)" +
+                "VALUES (@id, @name, @countryId)";
+
+            var parameters = new (string, string)[]
+            {
+                ("@id", place[0]),
+                ("@name", place[1]),
+                ("@countryId", countryId.ToString())
+            };
+
+            ExecuteSql(Query, parameters);
+
+        }
+
         /// <summary>
         /// Gets the id of a country using its <paramref name="name"/>.
         /// </summary>
@@ -681,47 +775,7 @@ namespace Genealogy
                 return (int)DataTable.Rows[0]["id"];
             }
             return 0;
-        }
-
-        /// <summary>
-        /// Gets the last added id from any specified <paramref name="table"/>.
-        /// </summary>
-        /// <param name="table"></param>
-        /// <returns></returns>
-        public int GetLastAddedId(string table)
-        {
-            string name;
-            if (table == "Family") name = "Family";
-            else if (table == "Places") name = "Places";
-            else name = "Countries";
-            DataTable = GetDataTable($"SELECT id FROM {name}");
-            var ids = new List<int>();
-            foreach (DataRow row in DataTable.Rows)
-            {
-                ids.Add(int.Parse(row["id"].ToString()));
-            }
-            return ids.Last();
-        }
-
-        /// <summary>
-        /// Selects all members from the Family table. Allows possible <paramref name="filter"/>.
-        /// </summary>
-        /// <param name="filter"></param>
-        /// <returns></returns>
-        public List<Member> Search(string filter = "")
-        {
-            DataTable = GetDataTable("SELECT * FROM Family " + filter);
-            List<Member> members = new List<Member>();
-            if (DataTable.Rows.Count > 0)
-            {
-                foreach (DataRow row in DataTable.Rows)
-                {
-                    members.Add(GetMember(row));
-                }
-                return members;
-            }
-            return null;
-        }
+        }       
 
         /// <summary>
         /// Takes a <see cref="DataRow"/> and turns it into a <see cref="Member"/>.
@@ -745,32 +799,6 @@ namespace Genealogy
             if (!(row["partner_id"] is DBNull)) member.PartnerId = (int)row["partner_id"];
             if (!(row["father_id"] is DBNull)) member.FatherId = (int)row["father_id"];
             if (!(row["mother_id"] is DBNull)) member.MotherId = (int)row["mother_id"];
-            return member;
-        }
-
-        /// <summary>
-        /// Takes a string representing a member. Separates the data into an array.
-        /// AAssigns every part to its member property. The perts that can be
-        /// <see langword="null"/> are checked before assignment.
-        /// </summary>
-        /// <param name="line"></param>
-        /// <returns>A <see cref="Member"/> with all its properties assigned.</returns>
-        public Member GetMember(string line)
-        {
-            var data = line.Split(", ");
-            var member = new Member
-            {
-                Id = int.Parse(data[0]),
-                FirstName = data[1],
-                LastName = data[2]
-            };
-            if (data[3] != "null") member.DateOfBirth = Convert.ToDateTime(data[3]);
-            if (data[4] != "null") member.PlaceOfBirthId = int.Parse(data[4]);
-            if (data[5] != "null") member.DateOfDeath = Convert.ToDateTime(data[5]);
-            if (data[6] != "null") member.PlaceOfDeathId = int.Parse(data[6]);
-            if (data[7] != "null") member.PartnerId = int.Parse(data[7]);
-            if (data[8] != "null") member.FatherId = int.Parse(data[8]);
-            if (data[9] != "null") member.MotherId = int.Parse(data[9]);
             return member;
         }
 

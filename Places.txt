@@ -1,20 +1,20 @@
-Bergsjön, Sverige
-Kista, Sverige
-Bromma, Sverige
-Herrljunga, Sverige
-Falköping, Sverige
-Floby, Sverige
-Sörby, Sverige
-Opladen, Tyskland
-Mjäldrunga, Sverige
-Källunga, Sverige
-Eriksberg, Sverige
-Ulricehamn, Sverige
-Mechtshausen, Tyskland
-Rheydt, Tyskland
-Nacka, Sverige
-Uppsala, Sverige
-Stockholm, Sverige
-Karlsborg, Sverige
-Skövde, Sverige
-Lidköping, Sverige
+1, Bergsjön, Sverige
+2, Kista, Sverige
+3, Bromma, Sverige
+4, Herrljunga, Sverige
+5, Falköping, Sverige
+6, Floby, Sverige
+7, Sörby, Sverige
+8, Opladen, Tyskland
+9, Mjäldrunga, Sverige
+10, Källunga, Sverige
+11, Eriksberg, Sverige
+12, Ulricehamn, Sverige
+13, Mechtshausen, Tyskland
+14, Rheydt, Tyskland
+15, Nacka, Sverige
+16, Uppsala, Sverige
+17, Stockholm, Sverige
+18, Karlsborg, Sverige
+19, Skövde, Sverige
+20, Lidköping, Sverige

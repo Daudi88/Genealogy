@@ -6,7 +6,7 @@ namespace Genealogy
 {
     internal static class Utility
     {
-        private const int SLEEP = 800;
+        private const int Sleep = 800;
 
         /// <summary>
         /// Prints a title based on the <paramref name="text"/> provided.
@@ -121,7 +121,7 @@ namespace Genealogy
                     Thread.Sleep(delay);
                 }
             }
-            Thread.Sleep(SLEEP);
+            Thread.Sleep(Sleep);
             Console.ForegroundColor = ConsoleColor.White;
             if (Console.KeyAvailable) Console.ReadKey(true);
         }
@@ -155,7 +155,7 @@ namespace Genealogy
             {
                 Console.Write($"\tEnter {type} name: ");
                 name = ReadLine();
-                if (name == "0") FamilyTree.MainMenu();
+                if (EarlyExit(name)) FamilyTree.MainMenu();
                 else if (name == "") ErrorMessage($"\tYou have to enter a {type} name.");
                 else if (name.Any(char.IsDigit)) ErrorMessage("\tYou can't have digits in the name.");
                 else break;
@@ -192,7 +192,7 @@ namespace Genealogy
             while (true)
             {
                 var date = GetInput($"\tEnter date of {type}: ");
-                if (ExitEarly(date)) FamilyTree.MainMenu();
+                if (EarlyExit(date)) FamilyTree.MainMenu();
                 if (SkipEntry(date)) return null;
                 if (IsDateTimeConvertable(date))
                     return Convert.ToDateTime(date);
@@ -235,7 +235,7 @@ namespace Genealogy
         public static void Success(string item, string action = "created")
         {
             WriteDelayed($"\t{item} has successfully been {action}!\n", ConsoleColor.DarkGreen);
-            Thread.Sleep(SLEEP);
+            Thread.Sleep(Sleep);
         }
 
         /// <summary>
@@ -250,7 +250,19 @@ namespace Genealogy
             return ReadLine();
         }
 
-        public static bool ExitEarly(string choice) => choice == "0";
+        /// <summary>
+        /// Promts the user for an answer.
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns><see langword="true"/> if user types in "y", otwerwise <see langword="false"/>´.</returns>
+        public static bool MakeAChoice(string text, ConsoleColor color = ConsoleColor.White)
+        {
+            var choice = GetInput(text, color);
+            if (choice.ToLower() == "y") return true;
+            return false;
+        } 
+
+        public static bool EarlyExit(string choice) => choice == "0";
 
         public static bool SkipEntry(string choice) => choice == "";
 
