@@ -47,7 +47,6 @@ namespace Genealogy
         public void CreateTable(string name, string columns)
         {
             ExecuteSql($"CREATE TABLE {name} ({columns})");
-            //ExecuteSql($"");
         }
 
         /// <summary>
@@ -131,16 +130,7 @@ namespace Genealogy
                     "LIKE @name OR last_name LIKE @name";
                 DataTable = GetDataTable(Query, ("@name", $"%{name}%"));
             }
-
-            var members = new List<Member>();
-            if (DataTable.Rows.Count > 0)
-            {
-                foreach (DataRow row in DataTable.Rows)
-                {
-                    members.Add(GetMember(row));
-                }
-            }
-            return members;
+            return GetListOfMembers();
         }
 
         /// <summary>
@@ -165,19 +155,12 @@ namespace Genealogy
         /// </summary>
         /// <param name="year"></param>
         /// <returns><see cref="List{T}"/> of <see cref="Member"/>.</returns>
-        public List<Member> SearchByYear(string year)
+        public List<Member> SearchByDate(string year)
         {
             Query = "SELECT * FROM Family WHERE date_of_birth LIKE @year";
-            DataTable = GetDataTable(Query, ("@year", $"{year}%"));
+            DataTable = GetDataTable(Query, ("@year", $"%{year}%"));
             var members = new List<Member>();
-            if (DataTable.Rows.Count > 0)
-            {
-                foreach (DataRow row in DataTable.Rows)
-                {
-                    members.Add(GetMember(row));
-                }
-            }
-            return members;
+            return GetListOfMembers();
         }
 
         /// <summary>
@@ -203,6 +186,27 @@ namespace Genealogy
         {
             Query = "DELETE FROM Family WHERE id = @id";
             ExecuteSql(Query, ("@id", member.Id.ToString()));
+            Query = "SELECT * FROM Family";
+            DataTable = GetDataTable(Query);
+            var members = GetListOfMembers();
+            foreach (var memb in members)
+            {
+                if (memb.PartnerId == member.Id)
+                {
+                    memb.PartnerId = null;
+                    UpdateMember(memb);
+                }
+                else if (memb.FatherId == member.Id)
+                {
+                    memb.FatherId = null;
+                    UpdateMember(memb);
+                }
+                else if (memb.MotherId == member.Id)
+                {
+                    memb.MotherId = null;
+                    UpdateMember(memb);
+                }
+            }
         }
 
         /// <summary>
@@ -245,18 +249,9 @@ namespace Genealogy
         {
             Query = "SELECT * FROM Family WHERE mother_id = @id " +
                 "OR father_id = @id";
-            DataTable = GetDataTable(Query,
-                ("@id", member.Id.ToString()));
-            var children = new List<Member>();
-            if (DataTable.Rows.Count > 0)
-            {
-                foreach (DataRow row in DataTable.Rows)
-                {
-                    children.Add(GetMember(row));
-                }
-            }
-            return children;
-        }
+            DataTable = GetDataTable(Query, ("@id", member.Id.ToString()));
+            return GetListOfMembers();
+        }        
 
         /// <summary>
         /// Creates a <see cref="List{T}"/> of siblings
@@ -272,16 +267,7 @@ namespace Genealogy
             DataTable = GetDataTable(Query,
                 ("@motherId", member.MotherId.ToString()),
                 ("@fatherId", member.FatherId.ToString()));
-
-            List<Member> siblings = new List<Member>();
-            if (DataTable.Rows.Count > 0)
-            {
-                foreach (DataRow row in DataTable.Rows)
-                {
-                    siblings.Add(GetMember(row));
-                }
-            }
-            return siblings.Where(s => s.Id != member.Id).ToList();
+            return GetListOfMembers().Where(s => s.Id != member.Id).ToList();
         }
 
         /// <summary>
@@ -359,37 +345,30 @@ namespace Genealogy
                     relatives = GetParents(member);
                     type = "parents";
                     break;
-
                 case 2:
                     relatives = GetChildren(member);
                     type = "children";
                     break;
-
                 case 3:
                     relatives.Add(SearchById(member.PartnerId));
                     type = "partner";
                     break;
-
                 case 4:
                     relatives = GetSiblings(member);
                     type = "siblings";
                     break;
-
                 case 5:
                     relatives = GetCousins(member);
                     type = "cousins";
                     break;
-
                 case 6:
                     relatives = GetAuntsAndUncles(member);
                     type = "aunts or uncles";
                     break;
-
                 case 7:
                     relatives = GetGrandparents(member);
                     type = "grandparents";
                     break;
-
                 default:
                     type = "";
                     break;
@@ -601,6 +580,24 @@ namespace Genealogy
             if (data[8] != "null") member.FatherId = int.Parse(data[8]);
             if (data[9] != "null") member.MotherId = int.Parse(data[9]);
             return member;
+        }
+
+        /// <summary>
+        /// Checks if the DataRow contains anything and if 
+        /// so populates a list with members.
+        /// </summary>
+        /// <returns>A <see cref="List{T}"/> of <see cref="Member"/>.</returns>
+        private List<Member> GetListOfMembers()
+        {
+            var members = new List<Member>();
+            if (DataTable.Rows.Count > 0)
+            {
+                foreach (DataRow row in DataTable.Rows)
+                {
+                    members.Add(GetMember(row));
+                }
+            }
+            return members;
         }
 
         /// <summary>

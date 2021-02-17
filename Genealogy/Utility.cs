@@ -26,35 +26,30 @@ namespace Genealogy
                     Console.WriteLine("\t/_/  \\_,_/_/_/_/_/_/\\_, /   /_/ /_/  \\__/\\__/");
                     Console.WriteLine("\t                   /___/");
                     break;
-
                 case "Main Menu":
                     Console.WriteLine("\n\t   __  ___     _        __  ___");
                     Console.WriteLine("\t  /  |/  /__ _(_)__    /  |/  /__ ___  __ __");
                     Console.WriteLine("\t / /|_/ / _ `/ / _ \\  / /|_/ / -_) _ \\/ // /");
                     Console.WriteLine("\t/_/  /_/\\_,_/_/_//_/ /_/  /_/\\__/_//_/\\_,_/\n");
                     break;
-
                 case "Add Member":
                     Console.WriteLine("\n\t   ___     __   __  __  ___          __");
                     Console.WriteLine("\t  / _ |___/ /__/ / /  |/  /__ __ _  / /  ___ ____");
                     Console.WriteLine("\t / __ / _  / _  / / /|_/ / -_)  ' \\/ _ \\/ -_) __/");
                     Console.WriteLine("\t/_/ |_\\_,_/\\_,_/ /_/  /_/\\__/_/_/_/_.__/\\__/_/\n");
                     break;
-
                 case "List Members":
                     Console.WriteLine("\n\t   ____                 __     __  ___          __");
                     Console.WriteLine("\t  / __/__ ___ _________/ /    /  |/  /__ __ _  / /  ___ _______");
                     Console.WriteLine("\t _\\ \\/ -_) _ `/ __/ __/ _ \\  / /|_/ / -_)  ' \\/ _ \\/ -_) __(_-<");
                     Console.WriteLine("\t/___/\\__/\\_,_/_/  \\__/_//_/ /_/  /_/\\__/_/_/_/_.__/\\__/_/ /___/\n");
                     break;
-
                 case "Selected Member":
                     Console.WriteLine("\n\t   ____    __        __         __  __  ___          __");
                     Console.WriteLine("\t  / __/__ / /__ ____/ /____ ___/ / /  |/  /__ __ _  / /  ___ ____");
                     Console.WriteLine("\t _\\ \\/ -_) / -_) __/ __/ -_) _  / / /|_/ / -_)  ' \\/ _ \\/ -_) __/");
                     Console.WriteLine("\t/___/\\__/_/\\__/\\__/\\__/\\__/\\_,_/ /_/  /_/\\__/_/_/_/_.__/\\__/_/\n");
                     break;
-
                 case "Update Member":
                     Console.WriteLine("\n\t  __  __        __     __        __  ___          __");
                     Console.WriteLine("\t / / / /__  ___/ /__ _/ /____   /  |/  /__ __ _  / /  ___ ____");
@@ -62,14 +57,12 @@ namespace Genealogy
                     Console.WriteLine("\t\\____/ .__/\\_,_/\\_,_/\\__/\\__/ /_/  /_/\\__/_/_/_/_.__/\\__/_/");
                     Console.WriteLine("\t    /_/\n");
                     break;
-
                 case "Relatives":
                     Console.WriteLine("\n\t   ___      __     __  _");
                     Console.WriteLine("\t  / _ \\___ / /__ _/ /_(_)  _____ ___");
                     Console.WriteLine("\t / , _/ -_) / _ `/ __/ / |/ / -_|_-<");
                     Console.WriteLine("\t/_/|_|\\__/_/\\_,_/\\__/_/|___/\\__/___/\n");
                     break;
-
                 default:
                     break;
             }
@@ -123,7 +116,10 @@ namespace Genealogy
             }
             Thread.Sleep(Sleep);
             Console.ForegroundColor = ConsoleColor.White;
-            if (Console.KeyAvailable) Console.ReadKey(true);
+            if (Console.KeyAvailable)
+            {
+                Console.ReadKey(true);
+            }
         }
 
         /// <summary>
@@ -155,10 +151,22 @@ namespace Genealogy
             {
                 Console.Write($"\tEnter {type} name: ");
                 name = ReadLine();
-                if (EarlyExit(name)) FamilyTree.MainMenu();
-                else if (name == "") ErrorMessage($"\tYou have to enter a {type} name.");
-                else if (name.Any(char.IsDigit)) ErrorMessage("\tYou can't have digits in the name.");
-                else break;
+                if (EarlyExit(name))
+                {
+                    FamilyTree.MainMenu();
+                }
+                else if (name == "")
+                {
+                    ErrorMessage($"\tYou have to enter a {type} name.");
+                }
+                else if (name.Any(char.IsDigit))
+                {
+                    ErrorMessage("\tYou can't have digits in the name.");
+                }
+                else
+                {
+                    break;
+                }
             }
             return char.ToUpper(name[0]) + name[1..];
         }
@@ -174,8 +182,14 @@ namespace Genealogy
             while (true)
             {
                 WriteInColor($"\tEnter a {type} age: ");
-                if (int.TryParse(ReadLine(), out age)) break;
-                else ErrorMessage("\tInvalid choice. try again");
+                if (int.TryParse(ReadLine(), out age))
+                {
+                    break;
+                }
+                else
+                {
+                    ErrorMessage("\tInvalid choice. try again");
+                }
             }
             return age;
         }
@@ -192,12 +206,24 @@ namespace Genealogy
             while (true)
             {
                 var date = GetInput($"\tEnter date of {type}: ");
-                if (EarlyExit(date)) FamilyTree.MainMenu();
-                if (SkipEntry(date)) return null;
+                if (EarlyExit(date))
+                {
+                    FamilyTree.MainMenu();
+                }
+
+                if (SkipEntry(date))
+                {
+                    return null;
+                }
+
                 if (IsDateTimeConvertable(date))
+                {
                     return Convert.ToDateTime(date);
+                }
                 else
+                {
                     ErrorMessage("\tPlease use the format (yyyy-mm-dd)!");
+                }
             }
         }
 
@@ -246,7 +272,7 @@ namespace Genealogy
         public static string GetInput(string question, ConsoleColor color = ConsoleColor.White)
         {
             Console.ForegroundColor = color;
-            Console.Write(question + " ");
+            Console.Write(question);
             return ReadLine();
         }
 
@@ -258,7 +284,10 @@ namespace Genealogy
         public static bool MakeAChoice(string text, ConsoleColor color = ConsoleColor.White)
         {
             var choice = GetInput(text, color);
-            if (choice.ToLower() == "y") return true;
+            if (choice.ToLower() == "y")
+            {
+                return true;
+            }
             return false;
         } 
 
@@ -275,6 +304,26 @@ namespace Genealogy
             }
             catch
             {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Just wanted to see if I could make my own method that did the same thing as int.TryParse.
+        /// </summary>
+        /// <param name="s"></param>
+        /// <param name="result"></param>
+        /// <returns><see langword="true"/> if the parse was successfull, otherwise <see langword="false"/>.</returns>
+        public static bool TryParse(string s, out int result)
+        {
+            try
+            {
+                result = int.Parse(s);
+                return true;
+            }
+            catch
+            {
+                result = 0;
                 return false;
             }
         }
