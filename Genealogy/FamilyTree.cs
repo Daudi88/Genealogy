@@ -4,6 +4,8 @@ using static Genealogy.Utility;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Runtime.InteropServices;
+using System.Data;
 
 namespace Genealogy
 {
@@ -60,7 +62,7 @@ namespace Genealogy
                             ErrorMessage("\tInvalid choice. try again!");
                             innerExit = false;
                             break;
-                    }                    
+                    }
                 } while (!innerExit);
             }
         }
@@ -70,7 +72,7 @@ namespace Genealogy
         /// </summary>
         /// <returns>The member id.</returns>
         public static int AddMember(bool standard = true)
-        {            
+        {
             var firstName = GetName("first");
             if (firstName == "0")
             {
@@ -93,8 +95,8 @@ namespace Genealogy
             {
                 var choice = DoesAlreadyExist(member.ToString());
                 if (choice.ToLower() != "y")
-                { 
-                    return 0; 
+                {
+                    return 0;
                 }
                 Console.WriteLine();
             }
@@ -121,6 +123,238 @@ namespace Genealogy
             return member.Id;
         }
 
+        /// <summary>
+        /// Creates a <see cref="List{T}"/> of parents
+        /// based on the <paramref name="member"/>.
+        /// </summary>
+        /// <param name="member"></param>
+        /// <returns><see cref="List{T}"/> of parents or an empty
+        /// <see cref="List{T}"/> if no parents are found.</returns>
+        public static List<Member> GetParents(Member member)
+        {
+            var parents = new List<Member>();
+            var father = Database.SearchById(member.FatherId);
+            if (father != null) parents.Add(father);
+            var mother = Database.SearchById(member.MotherId);
+            if (mother != null) parents.Add(mother);
+            return parents;
+        }
+
+        /// <summary>
+        /// Creates a <see cref="List{T}"/> of siblings
+        /// based on the <paramref name="member"/>.
+        /// </summary>
+        /// <param name="member"></param>
+        /// <returns><see cref="List{T}"/> of siblings or an empty
+        /// <see cref="List{T}"/> if no siblings are found.</returns>
+        public static List<Member> GetSiblings(Member member)
+        {
+            var siblings = Database.SearchByMotherOrFatherId(member.FatherId, member.MotherId);
+            return siblings.Where(s => s.Id != member.Id).ToList();
+        }
+
+        /// <summary>
+        /// Gets the siblings of the member's parents.
+        /// </summary>
+        /// <param name="member"></param>
+        /// <returns><see cref="List{T}"/> of aunts and uncles or an empty list.</returns>
+        public static List<Member> GetAuntsAndUncles(Member member)
+        {
+            var auntsAndUncles = new List<Member>();
+            var parents = GetParents(member);
+            foreach (var parent in parents)
+            {
+                auntsAndUncles.AddRange(GetSiblings(parent));
+            }
+            return auntsAndUncles;
+        }
+
+        /// <summary>
+        /// Retrieves relatives based on the
+        /// <paramref name="choice"/> made by the user.
+        /// </summary>
+        /// <param name="member"></param>
+        /// <param name="choice"></param>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public static List<Member> GetRelatives(Member member, int choice, out string type)
+        {
+            var relatives = new List<Member>();
+            switch (choice)
+            {
+                case 1:
+                    relatives = GetParents(member);
+                    type = "parents";
+                    break;
+                case 2:
+                    relatives = Database.SearchByMotherOrFatherId(member.Id, member.Id);
+                    type = "children";
+                    break;
+                case 3:
+                    relatives.Add(Database.SearchById(member.PartnerId));
+                    type = "partner";
+                    break;
+                case 4:
+                    relatives = GetSiblings(member);
+                    type = "siblings";
+                    break;
+                case 5:
+                    var auntsAndUncles = GetAuntsAndUncles(member);
+                    if (auntsAndUncles.Count > 0)
+                    {
+                        foreach (var auntOrUncle in auntsAndUncles)
+                        {
+                            var children = Database.SearchByMotherOrFatherId(auntOrUncle.Id, auntOrUncle.Id);
+                            relatives.AddRange(children);
+                        }
+                    }
+                    type = "cousins";
+                    break;
+                case 6:
+                    relatives = GetAuntsAndUncles(member);
+                    type = "aunts or uncles";
+                    break;
+                case 7:
+                    var parents = GetParents(member);
+                    foreach (var parent in parents)
+                    {
+                        relatives.AddRange(GetParents(parent));
+                    }
+                    type = "grandparents";
+                    break;
+                default:
+                    type = "";
+                    break;
+            }
+            return relatives;
+        }
+
+        /// <summary>
+        /// Checks if the member exists in the database
+        /// otherwise lets user create member.
+        /// </summary>
+        /// <param name="title"></param>
+        /// <returns>Id of parent or 0 if no parent is found or created.</returns>
+        public static int? SetMember(string title)
+        {
+            Console.Write($"\tEnter name of {title}: ");
+            var name = ReadLine();
+            if (name != "")
+            {
+                var members = Database.SearchByName(name);
+                if (members.Count > 0)
+                {
+                    var id = ChooseMember(members);
+                    if (id != 0)
+                    {
+                        return id;
+                    }
+                }
+                name = char.ToUpper(name[0]) + name[1..];
+                var choice = BigFail(name);
+                if (choice.ToLower() == "y")
+                {
+                    return AddMember(false);
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Displays a <see cref="List{T}"/> of <see cref="Member"/> and
+        /// lets the user choose a member.
+        /// </summary>
+        /// <param name="members"></param>
+        /// <returns>Id of the <see cref="Member"/> the user chose or
+        /// 0 if no <see cref="Member"/> was chosen.</returns>
+        public static int ChooseMember(List<Member> members)
+        {
+            WriteInColor("\n\tWhich member do you want to choose?\n", ConsoleColor.Yellow);
+            int ctr = 1;
+            members = members.OrderBy(m => m.FirstName).ToList();
+            foreach (var member in members)
+            {
+                Console.Write($"\t{ctr++}. {member} ");
+                if (member.DateOfBirth.HasValue)
+                {
+                    Console.Write(member.DateOfBirth.Value.ToShortDateString());
+                }
+                Console.WriteLine();
+            }
+            WriteInColor("\t0. None of the above.\n", ConsoleColor.DarkRed);
+
+            int id;
+            while (true)
+            {
+                Console.Write("\t> ");
+                int.TryParse(ReadLine(), out int choice);
+                if (choice == 0)
+                {
+                    id = 0;
+                    break;
+                }
+                else if (choice > 0 && choice <= ctr)
+                {
+                    id = members[choice - 1].Id;
+                    break;
+                }
+                else
+                {
+                    ErrorMessage("\tInvalid choice. Try again!");
+                }
+            }
+            return id;
+        }
+
+        /// <summary>
+        /// Asks the user to choose a place. The method will loop
+        /// until the user chooses a place or enters 0.
+        /// </summary>
+        /// <param name="dataTable"></param>
+        /// <returns>The id of the chosen place or 0 if no place is chosen.</returns>
+        public static int ChoosePlace(DataTable dataTable)
+        {
+            WriteInColor("\n\tWhich place do you want to choose?\n");
+            var places = new Dictionary<int, (int, string, string)>();
+            var ctr = 1;
+            foreach (DataRow row in dataTable.Rows)
+            {
+                var id = (int)row["id"];
+                var place = Database.GetPlace(id);
+                places.Add(id, (ctr++, place.Item1, place.Item2));
+            }
+            foreach (var place in places)
+            {
+                Console.WriteLine($"\t{place.Value.Item1}. {place.Value.Item2} {place.Value.Item3}");
+            }
+            WriteInColor("\t0. None of the above\n", ConsoleColor.DarkRed);
+            while (true)
+            {
+                Console.Write("\t> ");
+                if (int.TryParse(ReadLine(), out int choice))
+                {
+                    if (choice == 0) return 0;
+                    else if (choice <= dataTable.Rows.Count)
+                    {
+                        var id = places.Where(p => p.Value.Item1 == choice).First();
+                        return id.Key;
+                    }
+                    else
+                    {
+                        ErrorMessage("Invalid choice. Try again!");
+                    }
+                }
+                else
+                {
+                    ErrorMessage("Invalid choice. Try again!");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Lets the user add more details when creating a new member.
+        /// </summary>
+        /// <param name="member"></param>
         private static void AddDetails(Member member)
         {
             if (MakeAChoice("\tIs the member deceased(y/n)?"))
@@ -137,7 +371,7 @@ namespace Genealogy
 
             if (MakeAChoice("\tDo you want to set partner(y/n)? "))
             {
-                member.PartnerId = Database.SetMember("partner");
+                member.PartnerId = SetMember("partner");
             }
 
             if (MakeAChoice("\tDo you want to set parents(y/n)?"))
@@ -148,16 +382,20 @@ namespace Genealogy
             Database.UpdateMember(member);
         }
 
+        /// <summary>
+        /// Sets both parents if the user doesn't enter 0.
+        /// </summary>
+        /// <param name="member"></param>
         private static void SetParents(Member member)
         {
-            var fatherId = Database.SetMember("father");
+            var fatherId = SetMember("father");
             if (fatherId != 0)
             {
                 member.FatherId = fatherId;
                 Console.WriteLine();
             }
-            
-            var motherId = Database.SetMember("mother");
+
+            var motherId = SetMember("mother");
             if (motherId != 0)
             {
                 member.MotherId = motherId;
@@ -247,7 +485,7 @@ namespace Genealogy
 
                 if (members.Count > 0)
                 {
-                    var id = Database.ChooseMember(members);
+                    var id = ChooseMember(members);
                     if (id != 0)
                     {
                         var member = members.Where(m => m.Id == id).FirstOrDefault();
@@ -277,9 +515,9 @@ namespace Genealogy
                 {
                     MainMenu();
                 }
-                else if (choice == "0") 
-                { 
-                    return null; 
+                else if (choice == "0")
+                {
+                    return null;
                 }
                 else
                 {
@@ -419,10 +657,10 @@ namespace Genealogy
                     {
                         if (option <= 7)
                         {
-                            var relatives = Database.GetRelatives(member, option, out string type);
+                            var relatives = GetRelatives(member, option, out string type);
                             if (relatives.Count > 0)
                             {
-                                var id = Database.ChooseMember(relatives);
+                                var id = ChooseMember(relatives);
                                 if (id != 0)
                                 {
                                     var relative = Database.SearchById(id);
@@ -506,13 +744,13 @@ namespace Genealogy
                                 member.PlaceOfDeathId = Database.GetPlaceId("death");
                                 break;
                             case 7:
-                                member.PartnerId = Database.SetMember("partner");
+                                member.PartnerId = SetMember("partner");
                                 break;
                             case 8:
-                                member.FatherId = Database.SetMember("father");
+                                member.FatherId = SetMember("father");
                                 break;
                             case 9:
-                                member.MotherId = Database.SetMember("mother");
+                                member.MotherId = SetMember("mother");
                                 break;
                             default:
                                 Console.SetCursorPosition(0, Console.CursorTop - 1);
@@ -530,29 +768,44 @@ namespace Genealogy
         {
             WriteInColor("\n\tName: ");
             Console.WriteLine(member.ToString());
-            WriteInColor("\tBorn: ");
-            if (member.DateOfBirth.HasValue)
-            {
-                Console.Write(member.DateOfBirth.Value.ToShortDateString() + " ");
-            }
 
-            if (member.PlaceOfBirthId.HasValue)
+            WriteInColor("\tBorn: ");
+            if (member.DateOfBirth.HasValue || member.PlaceOfBirthId.HasValue)
             {
-                var placeOfBirth = Database.GetPlace(member.PlaceOfBirthId);
-                Console.Write($"in {placeOfBirth.Item1} {placeOfBirth.Item2}.");
+                if (member.DateOfBirth.HasValue)
+                {
+                    Console.Write(member.DateOfBirth.Value.ToShortDateString() + " ");
+                }
+
+                if (member.PlaceOfBirthId.HasValue)
+                {
+                    var placeOfBirth = Database.GetPlace(member.PlaceOfBirthId);
+                    Console.Write($"in {placeOfBirth.Item1} {placeOfBirth.Item2}.");
+                } 
+            }
+            else
+            {
+                WriteInColor("Unknown", ConsoleColor.DarkRed);
             }
             Console.WriteLine();
 
             WriteInColor("\tDeceased: ");
-            if (member.DateOfDeath.HasValue) 
-            { 
-                Console.Write(member.DateOfDeath.Value.ToShortDateString() + " ");
-            }
-
-            if (member.PlaceOfDeathId.HasValue)
+            if (member.DateOfDeath.HasValue || member.PlaceOfDeathId.HasValue)
             {
-                var placeOfDeath = Database.GetPlace(member.PlaceOfDeathId);
-                Console.Write($"in {placeOfDeath.Item1} {placeOfDeath.Item2}.");
+                if (member.DateOfDeath.HasValue)
+                {
+                    Console.Write(member.DateOfDeath.Value.ToShortDateString() + " ");
+                }
+
+                if (member.PlaceOfDeathId.HasValue)
+                {
+                    var placeOfDeath = Database.GetPlace(member.PlaceOfDeathId);
+                    Console.Write($"in {placeOfDeath.Item1} {placeOfDeath.Item2}.");
+                } 
+            }
+            else
+            {
+                WriteInColor("Unknown", ConsoleColor.DarkRed);
             }
             Console.WriteLine();
 
@@ -562,6 +815,10 @@ namespace Genealogy
                 var partner = Database.SearchById(member.PartnerId.Value);
                 Console.Write(partner.ToString());
             }
+            else
+            {
+                WriteInColor("Unknown", ConsoleColor.DarkRed);
+            }
             Console.WriteLine();
 
             WriteInColor("\tFather: ");
@@ -570,6 +827,10 @@ namespace Genealogy
                 var father = Database.SearchById(member.FatherId.Value);
                 Console.Write(father.ToString());
             }
+            else
+            {
+                WriteInColor("Unknown", ConsoleColor.DarkRed);
+            }
             Console.WriteLine();
 
             WriteInColor("\tMother: ");
@@ -577,6 +838,10 @@ namespace Genealogy
             {
                 var mother = Database.SearchById(member.MotherId.Value);
                 Console.Write(mother.ToString());
+            }
+            else
+            {
+                WriteInColor("Unknown", ConsoleColor.DarkRed);
             }
             Console.WriteLine();
         }
@@ -589,6 +854,25 @@ namespace Genealogy
             {
                 Database.DeleteMember(member);
                 Success(member.ToString(), "deleted");
+                var allMembers = Database.Search();
+                foreach (var memb in allMembers)
+                {
+                    if (memb.PartnerId == member.Id)
+                    {
+                        memb.PartnerId = null;
+                        Database.UpdateMember(memb);
+                    }
+                    else if (memb.FatherId == member.Id)
+                    {
+                        memb.FatherId = null;
+                        Database.UpdateMember(memb);
+                    }
+                    else if (memb.MotherId == member.Id)
+                    {
+                        memb.MotherId = null;
+                        Database.UpdateMember(memb);
+                    }
+                }
                 return true;
             }
             return false;

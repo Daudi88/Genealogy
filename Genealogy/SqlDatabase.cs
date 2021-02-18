@@ -108,6 +108,26 @@ namespace Genealogy
         }
 
         /// <summary>
+        /// Selects all members from the Family table. Allows possible <paramref name="filter"/>.
+        /// </summary>
+        /// <param name="filter"></param>
+        /// <returns></returns>
+        public List<Member> Search(string filter = "")
+        {
+            DataTable = GetDataTable("SELECT * FROM Family " + filter);
+            List<Member> members = new List<Member>();
+            if (DataTable.Rows.Count > 0)
+            {
+                foreach (DataRow row in DataTable.Rows)
+                {
+                    members.Add(GetMember(row));
+                }
+                return members;
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Creates a <see cref="List{T}"/> of <see cref="Member"/>
         /// based on the <paramref name="name"/> provided.
         /// </summary>
@@ -151,6 +171,20 @@ namespace Genealogy
         }
 
         /// <summary>
+        /// Creates a <see cref="List{T}"/> of childrens
+        /// based on the <paramref name="member"/>.
+        /// </summary>
+        /// <param name="member"></param>
+        /// <returns><see cref="List{T}"/> of children or an empty
+        /// <see cref="List{T}"/> if no children are found.</returns>
+        public List<Member> SearchByMotherOrFatherId(int? fatherId, int? motherId)
+        {
+            Query = "SELECT * FROM Family WHERE father_id = @fId OR mother_id = @mId";
+            DataTable = GetDataTable(Query, ("@fId", fatherId.ToString()), ("@mId", motherId.ToString()));
+            return GetListOfMembers();
+        }
+
+        /// <summary>
         /// Selects all members based on date_of_birth.
         /// </summary>
         /// <param name="year"></param>
@@ -185,28 +219,7 @@ namespace Genealogy
         public void DeleteMember(Member member)
         {
             Query = "DELETE FROM Family WHERE id = @id";
-            ExecuteSql(Query, ("@id", member.Id.ToString()));
-            Query = "SELECT * FROM Family";
-            DataTable = GetDataTable(Query);
-            var members = GetListOfMembers();
-            foreach (var memb in members)
-            {
-                if (memb.PartnerId == member.Id)
-                {
-                    memb.PartnerId = null;
-                    UpdateMember(memb);
-                }
-                else if (memb.FatherId == member.Id)
-                {
-                    memb.FatherId = null;
-                    UpdateMember(memb);
-                }
-                else if (memb.MotherId == member.Id)
-                {
-                    memb.MotherId = null;
-                    UpdateMember(memb);
-                }
-            }
+            ExecuteSql(Query, ("@id", member.Id.ToString()));            
         }
 
         /// <summary>
@@ -219,244 +232,6 @@ namespace Genealogy
         {
             var members = SearchByName(name);
             return members.Count > 0;
-        }
-
-        /// <summary>
-        /// Creates a <see cref="List{T}"/> of parents
-        /// based on the <paramref name="member"/>.
-        /// </summary>
-        /// <param name="member"></param>
-        /// <returns><see cref="List{T}"/> of parents or an empty
-        /// <see cref="List{T}"/> if no parents are found.</returns>
-        public List<Member> GetParents(Member member)
-        {
-            var parents = new List<Member>();
-            var father = SearchById(member.FatherId);
-            if (father != null) parents.Add(father);
-            var mother = SearchById(member.MotherId);
-            if (mother != null) parents.Add(mother);
-            return parents;
-        }
-
-        /// <summary>
-        /// Creates a <see cref="List{T}"/> of childrens
-        /// based on the <paramref name="member"/>.
-        /// </summary>
-        /// <param name="member"></param>
-        /// <returns><see cref="List{T}"/> of children or an empty
-        /// <see cref="List{T}"/> if no children are found.</returns>
-        public List<Member> GetChildren(Member member)
-        {
-            Query = "SELECT * FROM Family WHERE mother_id = @id " +
-                "OR father_id = @id";
-            DataTable = GetDataTable(Query, ("@id", member.Id.ToString()));
-            return GetListOfMembers();
-        }        
-
-        /// <summary>
-        /// Creates a <see cref="List{T}"/> of siblings
-        /// based on the <paramref name="member"/>.
-        /// </summary>
-        /// <param name="member"></param>
-        /// <returns><see cref="List{T}"/> of siblings or an empty
-        /// <see cref="List{T}"/> if no siblings are found.</returns>
-        public List<Member> GetSiblings(Member member)
-        {
-            Query = "SELECT * FROM Family WHERE mother_id = @motherId " +
-                "OR father_id = @fatherId";
-            DataTable = GetDataTable(Query,
-                ("@motherId", member.MotherId.ToString()),
-                ("@fatherId", member.FatherId.ToString()));
-            return GetListOfMembers().Where(s => s.Id != member.Id).ToList();
-        }
-
-        /// <summary>
-        /// Creates a <see cref="List{T}"/> of cousins
-        /// based on the <paramref name="member"/>.
-        /// </summary>
-        /// <param name="member"></param>
-        /// <returns><see cref="List{T}"/> of cousins or an empty
-        /// <see cref="List{T}"/> if no cousins are found.</returns>
-        public List<Member> GetCousins(Member member)
-        {
-            var auntsAndUncles = GetAuntsAndUncles(member);
-            List<Member> cousins = new List<Member>();
-            if (auntsAndUncles.Count > 0)
-            {
-                foreach (var auntOrUncle in auntsAndUncles)
-                {
-                    var children = GetChildren(auntOrUncle);
-                    cousins.AddRange(children);
-                }
-            }
-            return cousins;
-        }
-
-        /// <summary>
-        /// Creates a <see cref="List{T}"/> of aunts and uncles. Retrieves the parents
-        /// of the <see langword="member"/> and then the parents' siblings.
-        /// </summary>
-        /// <param name="member"></param>
-        /// <returns><see cref="List{T}"/> of aunts and uncles or an empty
-        /// <see cref="List{T}"/> if no aunts or uncles are found.</returns>
-        public List<Member> GetAuntsAndUncles(Member member)
-        {
-            var auntsAndUncles = new List<Member>();
-            var parents = GetParents(member);
-            foreach (var parent in parents)
-            {
-                auntsAndUncles.AddRange(GetSiblings(parent));
-            }
-            return auntsAndUncles;
-        }
-
-        /// <summary>
-        /// Creates a <see cref="List{T}"/> of grandparents. Retireves parents
-        /// of <see langword="member"/> and then the parents' parents.
-        /// </summary>
-        /// <param name="member"></param>
-        /// <returns><see cref="List{T}"/> of grandparents or an empty
-        /// list if no grandparents are found.</returns>
-        public List<Member> GetGrandparents(Member member)
-        {
-            var grandparents = new List<Member>();
-            var parents = GetParents(member);
-            foreach (var parent in parents)
-            {
-                grandparents.AddRange(GetParents(parent));
-            }
-            return grandparents;
-        }
-
-        /// <summary>
-        /// Retrieves relatives based on the
-        /// <paramref name="choice"/> made by the user.
-        /// </summary>
-        /// <param name="member"></param>
-        /// <param name="choice"></param>
-        /// <param name="type"></param>
-        /// <returns></returns>
-        public List<Member> GetRelatives(Member member, int choice, out string type)
-        {
-            var relatives = new List<Member>();
-            switch (choice)
-            {
-                case 1:
-                    relatives = GetParents(member);
-                    type = "parents";
-                    break;
-                case 2:
-                    relatives = GetChildren(member);
-                    type = "children";
-                    break;
-                case 3:
-                    relatives.Add(SearchById(member.PartnerId));
-                    type = "partner";
-                    break;
-                case 4:
-                    relatives = GetSiblings(member);
-                    type = "siblings";
-                    break;
-                case 5:
-                    relatives = GetCousins(member);
-                    type = "cousins";
-                    break;
-                case 6:
-                    relatives = GetAuntsAndUncles(member);
-                    type = "aunts or uncles";
-                    break;
-                case 7:
-                    relatives = GetGrandparents(member);
-                    type = "grandparents";
-                    break;
-                default:
-                    type = "";
-                    break;
-            }
-            return relatives;
-        }
-
-        /// <summary>
-        /// Checks if the member exists in the database
-        /// otherwise lets user create member.
-        /// </summary>
-        /// <param name="title"></param>
-        /// <returns>Id of parent or 0 if no parent is found or created.</returns>
-        public int? SetMember(string title)
-        {
-            Console.Write($"\tEnter name of {title}: ");
-            var name = Utility.ReadLine();
-            if (name != "")
-            {
-                var members = SearchByName(name);
-                if (members.Count > 0)
-                {
-                    var id = ChooseMember(members);
-                    if (id != 0)
-                    {
-                        return id;
-                    }
-                }
-                name = char.ToUpper(name[0]) + name[1..];
-                var choice = Utility.BigFail(name);
-                if (choice.ToLower() == "y")
-                {
-                    return FamilyTree.AddMember(false);
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// Displays a <see cref="List{T}"/> of <see cref="Member"/> and
-        /// lets the user choose a member.
-        /// </summary>
-        /// <param name="members"></param>
-        /// <returns>Id of the <see cref="Member"/> the user chose or
-        /// 0 if no <see cref="Member"/> was chosen.</returns>
-        public int ChooseMember(List<Member> members)
-        {
-            Utility.WriteInColor("\n\tWhich member do you want to choose?\n", ConsoleColor.Yellow);
-            int ctr = 1;
-            members = members.OrderBy(m => m.FirstName).ToList();
-            foreach (var member in members)
-            {
-                Console.Write($"\t{ctr++}. {member} ");
-                if (member.DateOfBirth.HasValue)
-                {
-                    Console.Write(member.DateOfBirth.Value.ToShortDateString());
-                }
-                Console.WriteLine();
-            }
-            Utility.WriteInColor("\t0. None of the above.\n", ConsoleColor.DarkRed);
-
-            int id;
-            while (true)
-            {
-                Console.Write("\t> ");
-                if (int.TryParse(Utility.ReadLine(), out int choice))
-                {
-                    if (choice == 0)
-                    {
-                        id = 0;
-                        break;
-                    }
-                    else if (choice > 0 && choice <= ctr)
-                    {
-                        id = members[choice - 1].Id;
-                        break;
-                    }
-                    else
-                    {
-                        Utility.ErrorMessage("\tInvalid choice. Try again!");
-                    }
-                }
-                else
-                {
-                    Utility.ErrorMessage("\tInvalid choice. Try again!");
-                }
-            }
-            return id;
         }
 
         /// <summary>
@@ -498,7 +273,7 @@ namespace Genealogy
                 DataTable = GetDataTable(Query, ("@place", $"%{place}%"));
                 if (DataTable.Rows.Count > 0)
                 {
-                    var id = ChoosePlace(DataTable);
+                    var id = FamilyTree.ChoosePlace(DataTable);
                     if (id != 0) return id;
                 }
 
@@ -534,26 +309,6 @@ namespace Genealogy
                 ids.Add(int.Parse(row["id"].ToString()));
             }
             return ids.Last();
-        }
-
-        /// <summary>
-        /// Selects all members from the Family table. Allows possible <paramref name="filter"/>.
-        /// </summary>
-        /// <param name="filter"></param>
-        /// <returns></returns>
-        public List<Member> Search(string filter = "")
-        {
-            DataTable = GetDataTable("SELECT * FROM Family " + filter);
-            List<Member> members = new List<Member>();
-            if (DataTable.Rows.Count > 0)
-            {
-                foreach (DataRow row in DataTable.Rows)
-                {
-                    members.Add(GetMember(row));
-                }
-                return members;
-            }
-            return null;
         }
 
         /// <summary>
@@ -662,50 +417,7 @@ namespace Genealogy
             return dataTable;
         }
 
-        /// <summary>
-        /// Asks the user to choose a place. The method will loop
-        /// until the user chooses a place or enters 0.
-        /// </summary>
-        /// <param name="dataTable"></param>
-        /// <returns>The id of the chosen place or 0 if no place is chosen.</returns>
-        private int ChoosePlace(DataTable dataTable)
-        {
-            Utility.WriteInColor("\n\tWhich place do you want to choose?\n");
-            var places = new Dictionary<int, (int, string, string)>();
-            var ctr = 1;
-            foreach (DataRow row in dataTable.Rows)
-            {
-                var id = (int)row["id"];
-                var place = GetPlace(id);
-                places.Add(id, (ctr++, place.Item1, place.Item2));
-            }
-            foreach (var place in places)
-            {
-                Console.WriteLine($"\t{place.Value.Item1}. {place.Value.Item2} {place.Value.Item3}");
-            }
-            Utility.WriteInColor("\t0. None of the above\n", ConsoleColor.DarkRed);
-            while (true)
-            {
-                Console.Write("\t> ");
-                if (int.TryParse(Utility.ReadLine(), out int choice))
-                {
-                    if (choice == 0) return 0;
-                    else if (choice <= dataTable.Rows.Count)
-                    {
-                        var id = places.Where(p => p.Value.Item1 == choice).First();
-                        return id.Key;
-                    }
-                    else
-                    {
-                        Utility.ErrorMessage("Invalid choice. Try again!");
-                    }
-                }
-                else
-                {
-                    Utility.ErrorMessage("Invalid choice. Try again!");
-                }
-            }
-        }
+        
 
         /// <summary>
         /// Creates a new place based on the place provided.
