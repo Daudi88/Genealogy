@@ -12,7 +12,7 @@ namespace Genealogy
         public string Connection { get; set; } = @"Data Source = .\SQLExpress; Integrated Security = true; database = {0}";
         public string DatabaseName { get; set; } = "FamilyTree";
         public DataTable DataTable { get; set; } = new DataTable();
-        public string Query { get; set; }       
+        public string Query { get; set; }
 
         /// <summary>
         /// Tries to create a database with the provided <paramref name="name"/>.
@@ -27,13 +27,13 @@ namespace Genealogy
                 DatabaseName = "master";
                 ExecuteSql($"CREATE DATABASE {name}");
                 DatabaseName = name;
-                Utility.WriteDelayed("\n\tDatabase created! Welcome to the Family Tree!\n");
+                Helper.WriteDelayed("\n\tDatabase created! Welcome to the Family Tree!\n");
                 return true;
             }
             catch (Exception)
             {
                 DatabaseName = name;
-                Utility.WriteDelayed("\n\tWelcome back to the Family Tree!\n");
+                Helper.WriteDelayed("\n\tWelcome back to the Family Tree!\n");
                 return false;
             }
         }
@@ -136,20 +136,24 @@ namespace Genealogy
         /// <see cref="List{T}"/> if no members are found.</returns>
         public List<Member> SearchByName(string name)
         {
+            Query = "SELECT * FROM Family WHERE ";
+            (string, string)[] parameters;
             if (name.Contains(" "))
             {
                 var names = name.Split(" ");
-                Query = "SELECT * FROM Family WHERE first_name " +
-                    "LIKE @firstName AND last_name LIKE @lastName";
-                DataTable = GetDataTable(Query,
-                    ("@firstName", $"%{names[0]}%"), ("@lastName", $"%{names[1]}%"));
+                Query += "first_name LIKE @fName AND last_name LIKE @lName";
+                parameters = new (string, string)[] 
+                { 
+                    ("@fName", $"{names[0]}%"), 
+                    ("@lName", $"{names[1]}%") 
+                };
             }
             else
             {
-                Query = "SELECT * FROM Family WHERE first_name " +
-                    "LIKE @name OR last_name LIKE @name";
-                DataTable = GetDataTable(Query, ("@name", $"%{name}%"));
+                Query += "first_name LIKE @name OR last_name LIKE @name";
+                parameters = new (string, string)[] { ("@name", $"{name}%") };
             }
+            DataTable = GetDataTable(Query, parameters);
             return GetListOfMembers();
         }
 
@@ -219,7 +223,7 @@ namespace Genealogy
         public void DeleteMember(Member member)
         {
             Query = "DELETE FROM Family WHERE id = @id";
-            ExecuteSql(Query, ("@id", member.Id.ToString()));            
+            ExecuteSql(Query, ("@id", member.Id.ToString()));
         }
 
         /// <summary>
@@ -264,7 +268,7 @@ namespace Genealogy
         public int? GetPlaceId(string type)
         {
             Console.Write($"\tEnter place of {type}: ");
-            var place = Utility.ReadLine();
+            var place = Helper.ReadLine();
             if (place == "0") return 0;
             else if (place != "")
             {
@@ -277,7 +281,7 @@ namespace Genealogy
                     if (id != 0) return id;
                 }
 
-                var choice = Utility.BigFail(place);
+                var choice = Helper.BigFail(place);
                 if (choice.ToLower() == "y")
                 {
                     var id = CreatePlace();
@@ -417,7 +421,7 @@ namespace Genealogy
             return dataTable;
         }
 
-        
+
 
         /// <summary>
         /// Creates a new place based on the place provided.
@@ -428,10 +432,9 @@ namespace Genealogy
         {
             if (place == null && country == null)
             {
-                Console.WriteLine();
-                place = Utility.GetName("place");
-                country = Utility.GetName("country");
-                Utility.Success(place);
+                place = Helper.GetName("place");
+                country = Helper.GetName("country");
+                Helper.Success(place);
             }
             var countryId = GetCountryId(country);
             if (countryId == 0)
@@ -445,6 +448,12 @@ namespace Genealogy
             return GetLastAddedId("Places");
         }
 
+        /// <summary>
+        /// Creates a new place. Checks if country exists and gets 
+        /// the country id from the Countries table. If the country 
+        /// doesn't exist a new country is created.
+        /// </summary>
+        /// <param name="place"></param>
         private void CreatePlace(string[] place)
         {
             var countryId = GetCountryId(place[2]);
@@ -484,7 +493,7 @@ namespace Genealogy
                 return (int)DataTable.Rows[0]["id"];
             }
             return 0;
-        }       
+        }
 
         /// <summary>
         /// Takes a <see cref="DataRow"/> and turns it into a <see cref="Member"/>.

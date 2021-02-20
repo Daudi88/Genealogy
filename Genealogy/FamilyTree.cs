@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using static Genealogy.Utility;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Runtime.InteropServices;
-using System.Data;
+using static Genealogy.Helper;
 
 namespace Genealogy
 {
@@ -366,19 +365,17 @@ namespace Genealogy
                 {
                     member.PlaceOfDeathId = placeOfDeathId;
                 }
-                Console.WriteLine();
             }
 
-            if (MakeAChoice("\tDo you want to set partner(y/n)? "))
+            if (MakeAChoice("\n\tDo you want to set partner(y/n)? "))
             {
                 member.PartnerId = SetMember("partner");
             }
 
-            if (MakeAChoice("\tDo you want to set parents(y/n)?"))
+            if (MakeAChoice("\n\tDo you want to set parents(y/n)?"))
             {
                 SetParents(member);
             }
-            Console.WriteLine();
             Database.UpdateMember(member);
         }
 
@@ -667,7 +664,7 @@ namespace Genealogy
                                     SelectedMember(relative);
                                 }
                             }
-                            else ErrorMessage($"\t{member} doesn't have any {type}.");
+                            else ErrorMessage($"\t{member} doesn't have any {type} in the database.");
                         }
                     }
                     else
@@ -764,6 +761,12 @@ namespace Genealogy
             }
         }
 
+        /// <summary>
+        /// Displays detailed information about the member. For those properties 
+        /// that can be null a chech is made. If there isn't a value the 
+        /// word 'unknown' is printed to the screen.
+        /// </summary>
+        /// <param name="member"></param>
         private static void DisplayDetails(Member member)
         {
             WriteInColor("\n\tName: ");
@@ -781,7 +784,7 @@ namespace Genealogy
                 {
                     var placeOfBirth = Database.GetPlace(member.PlaceOfBirthId);
                     Console.Write($"in {placeOfBirth.Item1} {placeOfBirth.Item2}.");
-                } 
+                }
             }
             else
             {
@@ -801,7 +804,7 @@ namespace Genealogy
                 {
                     var placeOfDeath = Database.GetPlace(member.PlaceOfDeathId);
                     Console.Write($"in {placeOfDeath.Item1} {placeOfDeath.Item2}.");
-                } 
+                }
             }
             else
             {
@@ -846,6 +849,13 @@ namespace Genealogy
             Console.WriteLine();
         }
 
+        /// <summary>
+        /// Asks the user one more time if they want to delete the member. 
+        /// If the user types in 'y' then the member is deleted and all 
+        /// the connections to that member is removed.
+        /// </summary>
+        /// <param name="member"></param>
+        /// <returns></returns>
         private static bool DeleteMember(Member member)
         {
             WriteInColor($"\tAre you sure you want to delete {member}?(y/n) ", ConsoleColor.DarkRed);

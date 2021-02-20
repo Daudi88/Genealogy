@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace Genealogy
 {
-    internal static class Utility
+    internal static class Helper
     {
         private const int Sleep = 800;
 
@@ -260,7 +260,7 @@ namespace Genealogy
         /// <param name="action"></param>
         public static void Success(string item, string action = "created")
         {
-            WriteDelayed($"\t{item} has successfully been {action}!\n", ConsoleColor.DarkGreen);
+            WriteDelayed($"\n\t{item} has successfully been {action}!\n", ConsoleColor.DarkGreen);
             Thread.Sleep(Sleep);
         }
 
@@ -291,10 +291,28 @@ namespace Genealogy
             return false;
         } 
 
+        /// <summary>
+        /// Checks if <paramref name="choice"/> is "0".
+        /// </summary>
+        /// <param name="choice"></param>
+        /// <returns><see langword="true"/> if <paramref name="choice"/> 
+        /// is "0", otherwise <see langword="false"/>.</returns>
         public static bool EarlyExit(string choice) => choice == "0";
 
+        /// <summary>
+        /// Checks if <paramref name="choice"/> is an empty string.
+        /// </summary>
+        /// <param name="choice"></param>
+        /// <returns><see langword="true"/> if <paramref name="choice"/> 
+        /// is "", otherwise <see langword="false"/>.</returns>
         public static bool SkipEntry(string choice) => choice == "";
 
+        /// <summary>
+        /// Checks if the <paramref name="input"/> can be converted into a <see cref="DateTime"/>.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns><see langword="true"/> if the <paramref name="input"/> 
+        /// can be converted, otherwise <see langword="false"/>.</returns>
         public static bool IsDateTimeConvertable(string input)
         {
             try
@@ -309,11 +327,13 @@ namespace Genealogy
         }
 
         /// <summary>
-        /// Just wanted to see if I could make my own method that did the same thing as int.TryParse.
+        /// Just wanted to see if I could make my own method 
+        /// that did the same thing as int.TryParse.
         /// </summary>
         /// <param name="s"></param>
         /// <param name="result"></param>
-        /// <returns><see langword="true"/> if the parse was successfull, otherwise <see langword="false"/>.</returns>
+        /// <returns><see langword="true"/> if the parse was successfull, 
+        /// otherwise <see langword="false"/>.</returns>
         public static bool TryParse(string s, out int result)
         {
             try
