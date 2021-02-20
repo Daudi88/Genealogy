@@ -421,8 +421,6 @@ namespace Genealogy
             return dataTable;
         }
 
-
-
         /// <summary>
         /// Creates a new place based on the place provided.
         /// If country doesn't exist, country is also created.

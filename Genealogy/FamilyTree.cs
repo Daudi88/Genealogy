@@ -493,6 +493,10 @@ namespace Genealogy
             }
         }
 
+        /// <summary>
+        /// Lets the user choose what data that should be missing.
+        /// </summary>
+        /// <returns><see cref="List{T}"/> of members that match the search.</returns>
         private static List<Member> MissingData()
         {
             WriteInColor("\tWhat data should be missing?\n");
@@ -904,9 +908,9 @@ namespace Genealogy
                 "id int PRIMARY KEY IDENTITY (1,1) NOT NULL, " +
                 "first_name nvarchar(50) NOT NULL, " +
                 "last_name nvarchar(50) NOT NULL, " +
-                "date_of_birth nvarchar(10) NULL, " +
+                "date_of_birth date NULL, " +
                 "place_of_birth_id int NULL, " +
-                "date_of_death nvarchar(10) NULL, " +
+                "date_of_death date NULL, " +
                 "place_of_death_id int NULL, " +
                 "partner_id int NULL, " +
                 "father_id int NULL, " +
