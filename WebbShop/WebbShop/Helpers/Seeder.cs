@@ -21,6 +21,7 @@ namespace WebbShop.Helpers
                     new User { Name = "Administrator", Password = "CodicRulez", IsActive = true, IsAdmin = true},
                     new User { Name = "TestClient", Password = "Codic2021", IsActive = true, IsAdmin = false }
                 });
+
                 db.SaveChanges();
             }
 
@@ -33,6 +34,7 @@ namespace WebbShop.Helpers
                     new BookCategory { Name = "Science Fiction" },
                     new BookCategory { Name = "Romance" }
                 });
+
                 db.SaveChanges();
             }
 
@@ -45,6 +47,7 @@ namespace WebbShop.Helpers
                     new Book { Title = "Doctor Sleep", Author = "Stephen King", Price = 200, Amount = 1, Category = db.BookCategories.FirstOrDefault(c => c.Name == "Horror") },
                     new Book { Title = "I Robot", Author = "Isaac Asimov", Price = 150, Amount = 4, Category = db.BookCategories.FirstOrDefault(c => c.Name == "Science Fiction") }
                 });
+
                 db.SaveChanges();
             }
         }

@@ -26,7 +26,19 @@ namespace WebbShop
                 db.SaveChanges();
                 return true;
             }
+
             return false;
+        }
+
+        /// <summary>
+        /// Checks if the user is an admin based on the <paramref name="userId"/>.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns><see langword="true"/> if the user is an admin,
+        /// otherwise <see langword="false"/>.</returns>
+        public bool UserIsAdmin(int userId)
+        {
+            return UserExists(userId, out var user) && user.IsAdmin;
         }
 
         /// <summary>
@@ -74,9 +86,11 @@ namespace WebbShop
                         Amount = amount
                     });
                 }
+
                 db.SaveChanges();
                 return true;
             }
+
             return false;
         }
 
@@ -100,6 +114,7 @@ namespace WebbShop
                 db.SaveChanges();
                 return true;
             }
+
             return false;
         }
 
@@ -125,6 +140,7 @@ namespace WebbShop
                 db.SaveChanges();
                 return true;
             }
+
             return false;
         }
 
@@ -162,6 +178,7 @@ namespace WebbShop
                 db.SaveChanges();
                 return true;
             }
+
             return false;
         }
 
@@ -187,6 +204,7 @@ namespace WebbShop
                     customersWithBooks.Add((customer, booksBought));
                 }
             }
+
             return customersWithBooks
                    .OrderByDescending(c => c.books)
                    .FirstOrDefault();
@@ -222,6 +240,7 @@ namespace WebbShop
                 db.SaveChanges();
                 return true;
             }
+
             return false;
         }
 
@@ -250,6 +269,7 @@ namespace WebbShop
                 db.Books.Update(book);
                 db.SaveChanges();
             }
+
             return false;
         }
 
@@ -274,6 +294,7 @@ namespace WebbShop
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -292,6 +313,7 @@ namespace WebbShop
                 user.IsAdmin = false;
                 return true;
             }
+
             return false;
         }
 
@@ -314,6 +336,7 @@ namespace WebbShop
                     .OrderBy(u => u.Name)
                     .ToList();
             }
+
             return users;
         }
 
@@ -342,8 +365,7 @@ namespace WebbShop
         public List<Book> GetAvailableBooks(int categoryId)
         {
             return db.Books
-                .Where(b => b.Category.Id == categoryId
-                && b.Amount > 0)
+                .Where(b => b.Category.Id == categoryId && b.Amount > 0)
                 .OrderBy(b => b.Title)
                 .ToList();
         }
@@ -438,6 +460,7 @@ namespace WebbShop
                 db.SaveChanges();
                 return true;
             }
+
             return false;
         }
 
@@ -455,6 +478,7 @@ namespace WebbShop
             {
                 users = db.Users.OrderBy(u => u.Name).ToList();
             }
+
             return users;
         }
 
@@ -475,7 +499,8 @@ namespace WebbShop
                 return 0;
             }
 
-            if (UserExists(username, password, out var user))
+            if (UserExists(username, password, out var user)
+                && user.IsActive)
             {
                 user.LastLogIn = DateTime.Now;
                 user.SessionTimer = DateTime.Now;
@@ -483,6 +508,7 @@ namespace WebbShop
                 db.SaveChanges();
                 return user.Id;
             }
+
             return 0;
         }
 
@@ -514,6 +540,7 @@ namespace WebbShop
             {
                 return db.SoldBooks.Sum(s => s.Price);
             }
+
             return 0;
         }
 
@@ -534,6 +561,7 @@ namespace WebbShop
                 db.SaveChanges();
                 return "Pong";
             }
+
             return string.Empty;
         }
 
@@ -553,6 +581,7 @@ namespace WebbShop
                 user.IsAdmin = true;
                 return true;
             }
+
             return false;
         }
 
@@ -587,6 +616,7 @@ namespace WebbShop
                 db.SaveChanges();
                 return true;
             }
+
             return false;
         }
 
@@ -625,6 +655,7 @@ namespace WebbShop
                     .Include(s => s.User)
                     .OrderBy(s => s.Title).ToList();
             }
+
             return null;
         }
 
@@ -664,6 +695,7 @@ namespace WebbShop
                 db.SaveChanges();
                 return true;
             }
+
             return false;
         }
 
@@ -678,7 +710,7 @@ namespace WebbShop
         /// otherwise <see langword="false"/>.</returns>
         public bool UpdateCategory(int adminId, int categoryId, string name)
         {
-            if (name.IsNullOrEmpty())
+            if (name.IsNullOrEmpty() || CategoryExists(name))
             {
                 return false;
             }
@@ -691,6 +723,7 @@ namespace WebbShop
                 db.SaveChanges();
                 return true;
             }
+
             return false;
         }
     }
