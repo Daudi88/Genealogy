@@ -31,17 +31,6 @@ namespace WebbShop
         }
 
         /// <summary>
-        /// Checks if the user is an admin based on the <paramref name="userId"/>.
-        /// </summary>
-        /// <param name="userId"></param>
-        /// <returns><see langword="true"/> if the user is an admin,
-        /// otherwise <see langword="false"/>.</returns>
-        public bool UserIsAdmin(int userId)
-        {
-            return UserExists(userId, out var user) && user.IsAdmin;
-        }
-
-        /// <summary>
         /// An admin method that adds a <see cref="Book"/> to the database.
         /// If the book already exists the amount will be increased instead.
         /// </summary>
@@ -725,6 +714,17 @@ namespace WebbShop
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Checks if the user is an admin based on the <paramref name="userId"/>.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns><see langword="true"/> if the user is an admin,
+        /// otherwise <see langword="false"/>.</returns>
+        public bool UserIsAdmin(int userId)
+        {
+            return UserExists(userId, out var user) && user.IsAdmin;
         }
     }
 }
