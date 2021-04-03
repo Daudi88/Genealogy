@@ -18,10 +18,12 @@ namespace WebbutikFrontend.Views.Shared
         /// The color used to color the error messages.
         /// </summary>
         public const ConsoleColor ErrorColor = ConsoleColor.DarkRed;
+
         /// <summary>
         /// The color used to color the text.
         /// </summary>
         public const ConsoleColor OriginalForegroundColor = ConsoleColor.White;
+        
         /// <summary>
         /// The width of the screen.
         /// </summary>

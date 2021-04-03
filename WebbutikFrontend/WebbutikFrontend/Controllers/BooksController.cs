@@ -476,7 +476,7 @@ namespace WebbutikFrontend.Controllers
                     if (choice > 0 && choice < ctr)
                     {
                         var book = books[choice - 1];
-                        SelectedBook(userId, book);                        
+                        SelectedBook(userId, book);
                     }
                     else if (choice != ctr)
                     {
@@ -490,6 +490,7 @@ namespace WebbutikFrontend.Controllers
                 Message.Error("There are no books available that match your search.");
             }
         }
+
         /// <summary>
         /// Shows an update menu for the <paramref name="adminId"/> and lets
         /// him or her make changes to the specified <paramref name="book"/>.

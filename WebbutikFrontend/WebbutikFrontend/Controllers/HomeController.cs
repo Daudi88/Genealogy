@@ -132,6 +132,7 @@ namespace WebbutikFrontend.Controllers
                 } while (!exit);
             }
         }
+
         /// <summary>
         /// Lets a user login.
         /// </summary>

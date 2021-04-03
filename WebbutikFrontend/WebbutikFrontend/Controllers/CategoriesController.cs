@@ -255,6 +255,7 @@ namespace WebbutikFrontend.Controllers
                 } while (!innerExit);
             }
         }
+
         /// <summary>
         /// Lets the <paramref name="adminId"/> update the name
         /// of the specified <paramref name="category"/>.
@@ -264,7 +265,7 @@ namespace WebbutikFrontend.Controllers
         private void UpdateCategory(int adminId, BookCategory category)
         {
             var oldName = category.Name;
-            var newName = Get.Text($"new name for {category.Name}");
+            var newName = Get.Text($"new name for {category.Name}", "\n\t");
             if (API.UpdateCategory(adminId, category.Id, newName))
             {
                 Message.Success($"{oldName} was successfully updated into {newName}!");
